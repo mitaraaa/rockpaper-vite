@@ -78,7 +78,6 @@ const App = () => {
         contract.on(
             "Result",
             ({ outcome, userMove, randomMove, amount }: Result) => {
-                console.log(amount);
                 setTransactions([
                     ...transactions,
                     {
