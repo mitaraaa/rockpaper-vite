@@ -5,6 +5,38 @@
     width: 520px;
 }
 
+.contract {
+    position: absolute;
+    top: 50px;
+    left: 50px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: left;
+    justify-content: center;
+
+    .address {
+        color: rgba($color: #FFF, $alpha: 40%);
+        text-align: left;
+    }
+    
+    .contract-balance {
+        color: rgba($color: #FFF, $alpha: 40%);
+        text-align: left;
+    }
+
+    a {
+        color: rgba($color: #FFF, $alpha: 40%);
+        text-decoration: none;
+        transition: 100ms;
+
+        &:hover {
+            color: rgba($color: #FFF, $alpha: 60%);
+        }
+    }
+}
+
 .account {
     display: flex;
     flex-direction: column;

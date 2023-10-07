@@ -19,10 +19,3 @@ export interface ITransaction {
     randomMove: Moves;
     bet: string;
 }
-
-export interface Result {
-    outcome: number;
-    userMove: number;
-    randomMove: number;
-    amount: number;
-}

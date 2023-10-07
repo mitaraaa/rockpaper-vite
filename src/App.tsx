@@ -4,7 +4,7 @@ import { useState } from "react";
 import "./App.scss";
 import Account from "./components/Account";
 import Transaction from "./components/Transaction";
-import { ITransaction, Moves, Outcomes, Result } from "./interfaces";
+import { ITransaction, Moves, Outcomes } from "./interfaces";
 
 import abi from "./assets/RockPaperScissors.json";
 
@@ -34,9 +34,11 @@ const getRandomMove = (): string => {
     return moves[Math.floor(Math.random() * moves.length)];
 };
 
-const getContract = (provider: ethers.providers.Web3Provider) => {
+const getContract = (
+    address: string,
+    provider: ethers.providers.Web3Provider
+) => {
     const signer = provider.getSigner();
-    const address = import.meta.env.VITE_CONTRACT_ADDRESS || "";
     return new ethers.Contract(address, abi.abi, signer);
 };
 
@@ -51,6 +53,9 @@ const getBalance = async (provider: ethers.providers.Web3Provider) => {
 };
 
 const App = () => {
+    const address = import.meta.env.VITE_CONTRACT_ADDRESS || "";
+
+    const [contractBalance, setContractBalance] = useState<string>("");
     const [balance, setBalance] = useState<string>("");
     const [move, setMove] = useState<Moves>(Moves.None);
     const [bet, setBet] = useState<string>("0.0001");
@@ -60,42 +65,62 @@ const App = () => {
 
     provider?.send("eth_requestAccounts", []).then(async () => {
         setBalance(await getBalance(provider));
+        await getContractBalance().then((balance) => {
+            setContractBalance(balance);
+        });
     });
+
+    const getContractBalance = async () => {
+        const contract = getContract(address, provider);
+        const _balance = await contract.getBalance();
+        return ethers.utils.formatEther(_balance).toString();
+    };
 
     const play = async () => {
         if (!validateBet(bet)) {
             return;
         }
 
-        const contract = getContract(provider);
+        const contract = getContract(address, provider);
 
         const result = await contract.play(move, getRandomMove(), {
             value: ethers.utils.parseEther(bet),
         });
 
+        await result.wait();
+
         const hash = result.hash;
         console.log(hash);
-        contract.on(
-            "Result",
-            ({ outcome, userMove, randomMove, amount }: Result) => {
-                setTransactions([
-                    ...transactions,
-                    {
-                        hash: hash,
-                        outcome: Object.values(Outcomes)[outcome],
-                        userMove: Object.values(Moves)[userMove],
-                        randomMove: Object.values(Moves)[randomMove],
-                        bet: ethers.utils.formatUnits(amount, "wei").toString(),
-                    },
-                ]);
-            }
-        );
+        contract.once("Result", (outcome, userMove, randomMove, amount) => {
+            console.log(outcome, userMove, randomMove, amount);
+            setTransactions([
+                ...transactions,
+                {
+                    hash: hash,
+                    outcome: Object.values(Outcomes)[outcome],
+                    userMove: Object.values(Moves)[userMove],
+                    randomMove: Object.values(Moves)[randomMove],
+                    bet: ethers.utils.formatUnits(amount, "ether").toString(),
+                },
+            ]);
+        });
 
         setBalance(await getBalance(provider));
+        await getContractBalance().then((balance) => {
+            setContractBalance(balance);
+        });
     };
 
     return (
         <div className="container">
+            <div className="contract">
+                <span>Rock Paper Scissors</span>
+                <span className="address">{address}</span>
+                <span className="contract-balance">{contractBalance} tBNB</span>
+                <a href="https://github.com/mitaraaa">
+                    Made by <u>@mitaraaa</u>
+                </a>
+            </div>
             <Account balance={balance} />
             <section className="moves">
                 <button
@@ -135,9 +160,12 @@ const App = () => {
                 </button>
             </form>
             <div className="transactions">
-                {transactions.map((transaction, key) => (
-                    <Transaction key={key} {...transaction} />
-                ))}
+                {transactions
+                    .slice(0)
+                    .reverse()
+                    .map((transaction, key) => (
+                        <Transaction key={key} {...transaction} />
+                    ))}
             </div>
         </div>
     );
